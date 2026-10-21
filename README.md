@@ -2,10 +2,22 @@
 
 Unofficial, **minimal** source backports of the two critical PHP core
 remote-code-execution fixes released on 2026-10-21, for **end-of-life PHP
-branches that the PHP project does not patch**:
+branches that the PHP project does not patch**.
 
-- `patches/php-5.4-CVE-2026-109618-109619.patch` — applies to **PHP 5.4.45**
-- `patches/php-7.3-CVE-2026-109618-109619.patch` — applies to **PHP 7.3.33**
+One patch per branch, each against the **last release of that branch**:
+
+| Patch | Applies to |
+|---|---|
+| `patches/php-5.4-CVE-2026-109618-109619.patch` | PHP 5.4.45 |
+| `patches/php-5.5-CVE-2026-109618-109619.patch` | PHP 5.5.38 |
+| `patches/php-5.6-CVE-2026-109618-109619.patch` | PHP 5.6.40 |
+| `patches/php-7.0-CVE-2026-109618-109619.patch` | PHP 7.0.33 |
+| `patches/php-7.1-CVE-2026-109618-109619.patch` | PHP 7.1.33 |
+| `patches/php-7.2-CVE-2026-109618-109619.patch` | PHP 7.2.34 |
+| `patches/php-7.3-CVE-2026-109618-109619.patch` | PHP 7.3.33 |
+
+(PHP 7.4 / 8.0 / 8.1 already have official minimal backports from the PHP
+security team; 8.2+ have full releases.)
 
 > **Not official PHP releases.** The PHP project ships fixes for 8.2+, plus
 > minimal source backports for 7.4 / 8.0 / 8.1. These two patches extend that
@@ -50,7 +62,7 @@ confirmed RCE path.
 ## How to apply
 
 ```sh
-# PHP 7.3.33
+# example: PHP 7.3.33 (use the patch matching your branch)
 tar xjf php-7.3.33.tar.bz2
 cd php-7.3.33
 patch -p1 < /path/to/patches/php-7.3-CVE-2026-109618-109619.patch
@@ -58,8 +70,8 @@ patch -p1 < /path/to/patches/php-7.3-CVE-2026-109618-109619.patch
 make && make install
 ```
 
-Same procedure for 5.4.45 with its patch. For distribution packages, apply the
-patch to the package source (e.g. the SRPM) and rebuild the package.
+For distribution packages, apply the patch to the package source (e.g. the
+SRPM) and rebuild the package.
 
 ## Build verification
 
