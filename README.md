@@ -20,8 +20,8 @@ One patch per branch, each against the **last release of that branch**:
 security team; 8.2+ have full releases.)
 
 > **Not official PHP releases.** The PHP project ships fixes for 8.2+, plus
-> minimal source backports for 7.4 / 8.0 / 8.1. These two patches extend that
-> same minimal approach to 5.4 and 7.3 for people building those branches from
+> minimal source backports for 7.4 / 8.0 / 8.1. These patches extend that
+> same minimal approach to 5.4–7.3 for people building those branches from
 > source. Upgrading to a supported PHP version is the only complete fix.
 
 ## The vulnerabilities
@@ -42,11 +42,17 @@ Mirroring the official minimal 7.4 backport (`php-src` commit `712e60f9ed`):
 
 1. **Remove `longjmp()` on OOM / integer overflow** — a fatal allocation error
    now ends the process (`_exit`) instead of unwinding through partially
-   initialized request state (CVE-2026-109618).
+   initialized request state (CVE-2026-109618). As in the official backport
+   this covers the memory limit, real allocation failures (including
+   persistent `malloc`/`realloc` and `zend_strtod`'s `Balloc()`), and the
+   "Possible integer overflow in memory allocation" checks (on 7.x also in
+   `zend_hash.c` and `zend_multiply.h`, i.e. `safe_emalloc()`).
 2. **Reset request-owned global state** — error/exception handlers,
    superglobals, SAPI request fields, `modules_activated` and the object store
    are cleared at request shutdown so a later request cannot consume stale
-   values (CVE-2026-109619).
+   values (CVE-2026-109619). On 5.x the object store is already cleared by the
+   existing `zend_objects_store_destroy()`; the 7.x patches reset it
+   explicitly.
 3. **Disable session upload-progress in code** — closes the confirmed
    producer/consumer path of CVE-2026-109619.
 4. **Harden multipart parsing** — keep only the headers actually used (ignoring
@@ -57,7 +63,32 @@ Mirroring the official minimal 7.4 backport (`php-src` commit `712e60f9ed`):
 These are **minimal** backports. They do **not** include the integer-overflow
 hardening in the generated VM (`zend_vm_execute.h`) from the full 8.2 patch,
 which would require regenerating the VM. That part is DoS hardening, not the
-confirmed RCE path.
+confirmed RCE path. For the same reason the 5.x patches leave the
+`"String size overflow"` fatals in `zend_operators.c` unchanged; with a normal
+`memory_limit` (well below 2 GB) the memory limit is hit first.
+
+## Operational impact — read before deploying
+
+Because an out-of-memory fatal now ends the process instead of raising a
+normal fatal error, **every request that exceeds `memory_limit` kills its
+worker**, not only malicious ones:
+
+- the client gets no response (connection closed / 502 from the proxy);
+- shutdown functions do not run and the session is not written;
+- the error message is written **only to stderr**, not to PHP's `error_log`:
+  - **PHP-FPM**: set `catch_workers_output = yes` in the pool, otherwise the
+    message is discarded and you only see a worker exiting unexpectedly;
+  - **mod_php**: it ends up in Apache's error log;
+  - **`php -S`** (built-in server): the whole server process exits.
+
+Before rolling out, check how often "Allowed memory size of … exhausted"
+appears in your current logs and raise `memory_limit` or fix those scripts if
+needed. Also set `session.upload_progress.enabled = 0` in `php.ini` so the
+configuration reflects the (now always disabled) behaviour.
+
+The full 8.2+ releases handle this differently (delayed OOM error plus a
+separate hard limit); that rework is far too large for a minimal backport, so
+the official minimal 7.4 backport behaves like these patches.
 
 ## How to apply
 
