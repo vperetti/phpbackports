@@ -87,6 +87,14 @@ that:
 Tested with the CLI built-in web server. Verify on your target SAPI (mod_php /
 PHP-FPM) before use.
 
+## Verifying a deployed fix
+
+`verify/` contains a small, controlled, **non-destructive** validator (not an
+exploit) to confirm a build is patched on the real SAPI after deployment: a
+token-gated endpoint (`cvecheck.php`) plus a driver that reports PASS/FAIL
+(`run-cvecheck.sh` for Linux/macOS, `run-cvecheck.ps1` for Windows PowerShell).
+See `verify/README.md`. Remove the endpoint after testing.
+
 ## Disclaimer
 
 Provided as-is, with no warranty. Review the diff before building.
