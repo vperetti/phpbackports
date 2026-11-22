@@ -1,6 +1,19 @@
 import sys, os, re
+# uso: aplica<54|73>.py <arvore-fonte> [1|2|all]
+#   1   = rodada 1 (CVE-2026-109618/109619, incl. PR #1 e issue #2)
+#   2   = rodada 2 (CVE-2026-126714/129496), sobre uma arvore ja com a rodada 1
+#   all = as duas (padrao)
 root = sys.argv[1]
+RODADA = sys.argv[2] if len(sys.argv) > 2 else 'all'
+if RODADA not in ('1', '2', 'all'):
+    sys.exit("rodada invalida: %s" % RODADA)
+ATIVO = True
+def rodada(n):
+    global ATIVO
+    ATIVO = RODADA in (n, 'all')
 def sub(path, old, new, count=1):
+    if not ATIVO:
+        return
     p = os.path.join(root, path)
     s = open(p, encoding='latin-1').read()
     n = s.count(old)
@@ -12,6 +25,8 @@ def sub(path, old, new, count=1):
     open(p, 'w', encoding='latin-1').write(s.replace(old, new))
 
 def insere_apos_regex(path, pat, texto):
+    if not ATIVO:
+        return
     p = os.path.join(root, path)
     s = open(p, encoding='latin-1').read()
     m = list(re.finditer(pat, s))
@@ -21,6 +36,8 @@ def insere_apos_regex(path, pat, texto):
     open(p, 'w', encoding='latin-1').write(s[:i] + texto + s[i:])
 
 def insere_apos_ultima(path, anchor, texto, esperado):
+    if not ATIVO:
+        return
     p = os.path.join(root, path)
     s = open(p, encoding='latin-1').read()
     n = s.count(anchor)
@@ -29,6 +46,7 @@ def insere_apos_ultima(path, anchor, texto, esperado):
     i = s.rfind(anchor) + len(anchor)
     open(p, 'w', encoding='latin-1').write(s[:i] + texto + s[i:])
 
+rodada('1')
 # --- CVE-2026-109618: OOM sem longjmp/bailout ---
 sub('Zend/zend_alloc.c', '''#if ZEND_DEBUG && defined(HAVE_KILL) && defined(HAVE_GETPID)
 	kill(getpid(), SIGSEGV);
@@ -223,6 +241,15 @@ sub('main/rfc1867.c', '''		if ((cd = php_mime_get_hdr_value(header, "Content-Dis
 			}
 ''')
 
+# 1b) PR #1: "Possible integer overflow" e Balloc sem bailout, como no commit oficial
+#     712e60f9ed (zend_alloc.c, zend_hash.c, zend_multiply.h -> safe_emalloc, zend_strtod.c)
+for arq in ('Zend/zend_alloc.c', 'Zend/zend_hash.c', 'Zend/zend_multiply.h'):
+    sub(arq, 'zend_error_noreturn(E_ERROR, "Possible integer overflow in ',
+        'zend_mm_safe_error_ex("Possible integer overflow in ', -1)
+sub('Zend/zend_strtod.c', 'zend_error_noreturn(E_ERROR, "Balloc() failed to allocate memory");',
+    'zend_mm_safe_error_ex("Balloc() failed to allocate memory");', 2)
+
+rodada('2')
 # 8) CVE-2026-126714 (GHSA-fm2m-fjf5-v3cp): sessao 'files' sempre truncada antes de gravar
 #    (upstream e2d3cee9ad). Escrita interrompida nao deixa mais sufixo da sessao antiga.
 sub('ext/session/mod_files.c', '''	/* Truncate file if the amount of new data is smaller than the existing data set. */

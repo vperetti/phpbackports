@@ -9,11 +9,10 @@ Unofficial, **minimal** source backports of critical PHP security fixes for
 | 2 | 2026-11-19 | CVE-2026-126714, CVE-2026-129496 | `patches/php-<branch>-CVE-2026-126714-129496.patch` |
 
 Round 2 patches are **incremental**: apply round 1 first, then round 2.
-The scripts in `tools/` (`aplica54.py` for 5.x, `aplica73.py` for 7.x) apply
-both rounds to a clean source tree; the patches were generated from them. The
-round 1 patches also carry the extra fatal-error conversions from PR #1, which
-were made directly in the `.patch` files and are not in the scripts yet, so
-use the `.patch` files as the reference.
+The scripts in `tools/` (`aplica54.py` for 5.x, `aplica73.py` for 7.x) generate
+the patches from a clean source tree: `aplica54.py <tree> 1` applies round 1,
+`... 2` applies round 2 on top, and no argument applies both. Applying the
+`.patch` files gives exactly the same tree as running the scripts.
 
 Round 1 — one patch per branch, each against the **last release of that branch**:
 
@@ -57,7 +56,10 @@ Mirroring the official minimal 7.4 backport (`php-src` commit `712e60f9ed`):
    this covers the memory limit, real allocation failures (including
    persistent `malloc`/`realloc` and `zend_strtod`'s `Balloc()`), and the
    "Possible integer overflow in memory allocation" checks (on 7.x also in
-   `zend_hash.c` and `zend_multiply.h`, i.e. `safe_emalloc()`).
+   `zend_hash.c` and `zend_multiply.h`, i.e. `safe_emalloc()`). On 5.x it also
+   covers `Balloc() allocation exceeds list boundary`, the 5.6
+   `String allocation overflow` and the `String size overflow` of string
+   concatenation.
 2. **Reset request-owned global state** — error/exception handlers,
    superglobals, SAPI request fields, `modules_activated` and the object store
    are cleared at request shutdown so a later request cannot consume stale
@@ -74,9 +76,11 @@ Mirroring the official minimal 7.4 backport (`php-src` commit `712e60f9ed`):
 These are **minimal** backports. They do **not** include the integer-overflow
 hardening in the generated VM (`zend_vm_execute.h`) from the full 8.2 patch,
 which would require regenerating the VM. That part is DoS hardening, not the
-confirmed RCE path. For the same reason the 5.x patches leave the
-`"String size overflow"` fatals in `zend_operators.c` unchanged; with a normal
-`memory_limit` (well below 2 GB) the memory limit is hit first.
+confirmed RCE path. On 5.x, the `"String size overflow"` fatals of string
+concatenation live in `zend_operators.c`, not in the VM, so they are converted
+too (with `memory_limit=-1`, concatenating two 1.1 GB strings used to bail out
+and run shutdown functions; it now ends the process). The 7.x
+`zend_smart_str.c` overflow fatals are left as in the official 7.4 backport.
 
 ## Operational impact — read before deploying
 

@@ -1,6 +1,19 @@
 import sys, os, re
+# uso: aplica<54|73>.py <arvore-fonte> [1|2|all]
+#   1   = rodada 1 (CVE-2026-109618/109619, incl. PR #1 e issue #2)
+#   2   = rodada 2 (CVE-2026-126714/129496), sobre uma arvore ja com a rodada 1
+#   all = as duas (padrao)
 root = sys.argv[1]
+RODADA = sys.argv[2] if len(sys.argv) > 2 else 'all'
+if RODADA not in ('1', '2', 'all'):
+    sys.exit("rodada invalida: %s" % RODADA)
+ATIVO = True
+def rodada(n):
+    global ATIVO
+    ATIVO = RODADA in (n, 'all')
 def sub(path, old, new, count=1):
+    if not ATIVO:
+        return
     p = os.path.join(root, path)
     s = open(p, encoding='latin-1').read()
     n = s.count(old)
@@ -12,6 +25,8 @@ def sub(path, old, new, count=1):
     open(p, 'w', encoding='latin-1').write(s.replace(old, new))
 
 def insere_apos_regex(path, pat, texto):
+    if not ATIVO:
+        return
     p = os.path.join(root, path)
     s = open(p, encoding='latin-1').read()
     m = list(re.finditer(pat, s))
@@ -20,6 +35,7 @@ def insere_apos_regex(path, pat, texto):
     i = m[0].end()
     open(p, 'w', encoding='latin-1').write(s[:i] + texto + s[i:])
 
+rodada('1')
 # 1) OOM / overflow: nao usar longjmp (bailout); encerrar o worker (CVE-2026-109618)
 sub('Zend/zend_alloc.c', """#if ZEND_DEBUG && defined(HAVE_KILL) && defined(HAVE_GETPID)
 	kill(getpid(), SIGSEGV);
@@ -64,12 +80,13 @@ ZEND_API void zend_mm_safe_error_ex(const char *format, ...)
 """)
 
 # zend_mm_safe_error inteiro -> chama a versao sem bailout
-p = os.path.join(root, 'Zend/zend_alloc.c')
-s = open(p, encoding='latin-1').read()
-ini = s.index('static void zend_mm_safe_error(zend_mm_heap *heap,')
-corpo = s.index('{', ini)
-fim = s.index('\tzend_bailout();\n}\n', corpo) + len('\tzend_bailout();\n}\n')
-s = s[:corpo] + """{
+if ATIVO:
+    p = os.path.join(root, 'Zend/zend_alloc.c')
+    s = open(p, encoding='latin-1').read()
+    ini = s.index('static void zend_mm_safe_error(zend_mm_heap *heap,')
+    corpo = s.index('{', ini)
+    fim = s.index('\tzend_bailout();\n}\n', corpo) + len('\tzend_bailout();\n}\n')
+    s = s[:corpo] + """{
 	(void) heap;
 	zend_mm_safe_error_ex(format,
 		limit,
@@ -80,7 +97,7 @@ s = s[:corpo] + """{
 		size);
 }
 """ + s[fim:]
-open(p, 'w', encoding='latin-1').write(s)
+    open(p, 'w', encoding='latin-1').write(s)
 
 sub('Zend/zend_alloc.c', 'zend_error_noreturn(E_ERROR, "Possible integer overflow in memory allocation (%zu * %zu + %zu)", nmemb, size, offset);',
     'zend_mm_safe_error_ex("Possible integer overflow in memory allocation (%zu * %zu + %zu)", nmemb, size, offset);', -1)
@@ -232,6 +249,57 @@ sub('main/rfc1867.c', '''		if ((cd = php_mime_get_hdr_value(header, "Content-Dis
 			}
 ''')
 
+# 1b) PR #1: falhas de alocacao restantes do commit oficial 712e60f9ed
+#     (malloc/realloc persistente e Balloc) tambem sem longjmp/exit handlers
+sub('Zend/zend_alloc.c', '''	_exit(1);
+}
+
+/*******************/
+/* Storage Manager */''', '''	_exit(1);
+}
+
+/* Backport CVE-2026-109618: persistent allocation failure must not run
+ * exit handlers on a possibly inconsistent state */
+ZEND_API void zend_out_of_memory(void)
+{
+	fprintf(stderr, "Out of memory\\n");
+/* See http://support.microsoft.com/kb/190351 */
+#ifdef PHP_WIN32
+	fflush(stderr);
+#endif
+	_exit(1);
+}
+
+/*******************/
+/* Storage Manager */''')
+sub('Zend/zend_alloc.h', '''inline static void * __zend_malloc(size_t len)
+{''', '''#if defined(__GNUC__) && __GNUC__ >= 3 && !defined(__INTEL_COMPILER) && !defined(DARWIN) && !defined(__hpux) && !defined(_AIX) && !defined(__osf__)
+ZEND_API void zend_out_of_memory(void) __attribute__ ((noreturn));
+#else
+ZEND_API void zend_out_of_memory(void);
+#endif
+
+inline static void * __zend_malloc(size_t len)
+{''')
+sub('Zend/zend_alloc.h', '''	fprintf(stderr, "Out of memory\\n");
+	exit(1);
+}''', '''	zend_out_of_memory();
+	return NULL;
+}''', 2)
+sub('Zend/zend_strtod.c', 'zend_error(E_ERROR, "Balloc() failed to allocate memory");',
+    'zend_mm_safe_error_ex("Balloc() failed to allocate memory");')
+
+# 1c) issue #2: fatais restantes da familia 5.x, mesmo tratamento
+sub('Zend/zend_strtod.c', 'zend_error(E_ERROR, "Balloc() allocation exceeds list boundary");',
+    'zend_mm_safe_error_ex("Balloc() allocation exceeds list boundary");')
+sub('Zend/zend_operators.c', 'zend_error(E_ERROR, "String size overflow");',
+    'zend_mm_safe_error_ex("String size overflow");', -1)
+if os.path.exists(os.path.join(root, 'Zend/zend_alloc.c')) and \
+   'String allocation overflow' in open(os.path.join(root, 'Zend/zend_alloc.c'), encoding='latin-1').read():
+    sub('Zend/zend_alloc.c', 'zend_error_noreturn(E_ERROR, "String allocation overflow, max size is %d", INT_MAX);',
+        'zend_mm_safe_error_ex("String allocation overflow, max size is %d", INT_MAX);')
+
+rodada('2')
 # 8) CVE-2026-126714 (GHSA-fm2m-fjf5-v3cp): sessao 'files' sempre truncada antes de gravar
 #    (upstream e2d3cee9ad). Escrita interrompida nao deixa mais sufixo da sessao antiga.
 sub('ext/session/mod_files.c', '''	/* Truncate file if the amount of new data is smaller than the existing data set. */
