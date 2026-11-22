@@ -119,6 +119,58 @@ affect SAPIs/extensions outside this scope (FPM, CGI, SOAP).
 
 Tests for CVE-2026-126714 are in `verify/cve-126714/` (see its README).
 
+## PHP 7.2 / 7.3 / 7.4: Remi Collet's security backports
+
+For the 7.x branches there is a more complete source than our own patches:
+[remicollet/php-src-security](https://github.com/remicollet/php-src-security),
+maintained by Remi Collet (php-src contributor, PHP 7.2 release manager). Those
+branches carry **every** security fix backported since each branch's last
+release, not only the four 2026 CVEs, including the four 2026 CVEs themselves.
+
+`patches/remi/` exports them as one patch per release, against the official
+php.net tarball:
+
+| Patch | Applies to | Remi branch head | Commits |
+|---|---|---|---|
+| `patches/remi/php-7.2-remi-security-backports.patch` | PHP 7.2.34 | `e845325cd92c` | `php-7.2-remi-commits.txt` |
+| `patches/remi/php-7.3-remi-security-backports.patch` | PHP 7.3.33 | `399a749a5cb0` | `php-7.3-remi-commits.txt` |
+| `patches/remi/php-7.4-remi-security-backports.patch` | PHP 7.4.33 | `9a0a020ff740` | `php-7.4-remi-commits.txt` |
+
+**Use either this patch or our `patches/php-7.x-CVE-*` patches, not both.**
+On 7.2 / 7.3 / 7.4 the Remi patch is the recommended one.
+
+```sh
+tar xjf php-7.3.33.tar.bz2 && cd php-7.3.33
+git apply -p1 /path/to/patches/remi/php-7.3-remi-security-backports.patch
+```
+
+Use `git apply`, not `patch`: the patch includes binary test fixtures. On
+Windows, run it from Git Bash or `git apply` in a cmd/PowerShell prompt, in the
+extracted tarball folder, before `buildconf` / `configure.js`.
+
+How the patches are built (`tools/remi-export.sh`, reproducible):
+
+1. `git diff` of Remi's branch head against the official `php-7.x.y` tag;
+2. applied to the php.net tarball;
+3. the re2c outputs that ship in the tarball (`ext/date/lib/parse_date.c`,
+   `parse_iso_intervals.c`, `ext/standard/url_scanner_ex.c`,
+   `ext/pdo/pdo_sql_parser.c`) are **regenerated** (re2c 2.2), because Remi
+   changed their `.re` sources and the git tree does not carry the generated
+   files. The build therefore does not need re2c, on Linux or Windows.
+
+Notes for Windows (VC15):
+
+- No new source files are added, so no `config.w32` needs new entries. The only
+  `config.w32` change (7.4, `ext/zip`) is guarded by `VCVERS >= 1920` (VS16)
+  and does nothing on VC15.
+- Remi's branches include the Windows-specific fixes from upstream
+  (`win32/ioutil.c`, `win32/sendmail.c`), but Remi builds and tests on Linux
+  (RPM). Build on VC15 and run `verify/` plus your application tests before
+  deploying.
+- The verifiers in `verify/` work on these builds, except `check-126714.sh` and
+  `check-129496.sh`, which are bash scripts (use WSL / Git Bash, or run test [3]
+  of `run-cvecheck.ps1`).
+
 ## How to apply
 
 ```sh
