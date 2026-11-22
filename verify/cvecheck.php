@@ -73,7 +73,7 @@ if ($t === 'info') {
        "ftruncate() failed". An unpatched build skips the truncate and fails
        later with "write failed". Touches no real session and no app data. */
     if (!function_exists('posix_mkfifo')) {
-        echo "result=INCONCLUSIVE (posix extension not loaded)\nok\n"; exit;
+        echo "result=INCONCLUSIVE (posix extension not loaded; run verify/check-126714.sh on the server)\nok\n"; exit;
     }
     if (function_exists('session_status') && session_status() === PHP_SESSION_ACTIVE) {
         echo "result=INCONCLUSIVE (a session is already active, e.g. session.auto_start)\nok\n"; exit;

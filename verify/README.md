@@ -14,6 +14,7 @@ against systems you are authorised to test.
 | `cvecheck.php` | Temporary endpoint. Reports build info and exposes three safe probes. Token-gated. |
 | `run-cvecheck.sh` | Driver for Linux/macOS (bash + curl). Prints PASS/FAIL per check. |
 | `run-cvecheck.ps1` | Same driver for Windows PowerShell (5.1+ or 7+). |
+| `check-126714.sh` | Local check for CVE-2026-126714 with the PHP CLI; same probe as test 3, without the posix extension. |
 | `check-129496.sh` | Local check for CVE-2026-129496, run on the server with the PHP CLI of the same build. |
 | `cve-126714/` | Local reproduction tests for CVE-2026-126714 (interrupted session write). |
 
@@ -40,7 +41,10 @@ Weak signals, read with care:
   build usually passes it as well.
 
 Test 3 needs the `posix` extension (`php-process` on RHEL/CentOS) and a
-writable `sys_get_temp_dir()`; otherwise it reports INCONCLUSIVE. It creates a
+writable `sys_get_temp_dir()`; otherwise it reports INCONCLUSIVE. On hosts
+without `php-process`, run `./check-126714.sh /usr/bin/php` on the server
+instead: it creates the FIFO with `mkfifo(1)` and runs the same probe with the
+CLI of the same package (the session code is shared by every SAPI). It creates a
 private temp dir with a FIFO, uses its own session id and save path, and
 removes both. Application sessions are not touched. It runs before the OOM
 test on purpose, because test 4 recycles the worker (and ends `php -S`).
