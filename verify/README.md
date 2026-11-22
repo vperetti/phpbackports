@@ -1,4 +1,4 @@
-# Mitigation verifier — CVE-2026-109618 / 109619
+# Mitigation verifier — CVE-2026-109618 / 109619 / 126714 / 129496
 
 A small, **controlled, non-destructive** validator to confirm a build is
 patched on the real SAPI (mod_php / PHP-FPM) **after** you deploy the fix.
@@ -14,6 +14,8 @@ against systems you are authorised to test.
 | `cvecheck.php` | Temporary endpoint. Reports build info and exposes three safe probes. Token-gated. |
 | `run-cvecheck.sh` | Driver for Linux/macOS (bash + curl). Prints PASS/FAIL per check. |
 | `run-cvecheck.ps1` | Same driver for Windows PowerShell (5.1+ or 7+). |
+| `check-129496.sh` | Local check for CVE-2026-129496, run on the server with the PHP CLI of the same build. |
+| `cve-126714/` | Local reproduction tests for CVE-2026-126714 (interrupted session write). |
 
 ## What it checks
 
@@ -21,13 +23,43 @@ against systems you are authorised to test.
 |---|---|---|---|
 | 1 | `max_multipart_body_parts` INI exists | PRESENT | ABSENT (the INI is added by the fix) |
 | 1 | `session.upload_progress.enabled` | off | on (producer path of CVE-2026-109619) |
-| 2 | POST with 3000 parts | parsed count capped | all 3000 accepted |
-| 3 | request driven to OOM | worker ends, no graceful fatal (CVE-2026-109618 `_exit` path) | graceful `Allowed memory size … exhausted` fatal (old `longjmp` path) |
-| 4 | requests after the OOM | all HTTP 200 (no stale state — CVE-2026-109619) | may wedge / serve corrupted state |
+| 2 | POST with 3000 parts | parsed count capped | see note below |
+| 3 | throw-away session stored on a FIFO (CVE-2026-126714) | `ftruncate() failed` reported: the handler always truncates before writing | `write failed` only: the truncate is skipped |
+| 4 | request driven to OOM | worker ends, no graceful fatal (CVE-2026-109618 `_exit` path) | graceful `Allowed memory size … exhausted` fatal (old `longjmp` path) |
+| 5 | requests after the OOM | all HTTP 200 (no stale state — CVE-2026-109619) | may wedge / serve corrupted state |
 
-The two strong discriminators are **the OOM killing the worker with no graceful
-fatal** and **the multipart cap**; together they distinguish a patched build
-from an unpatched one of the same version.
+Strong discriminators: **test 4** (round 1) and **test 3** (round 2).
+
+Weak signals, read with care:
+
+- `max_multipart_body_parts` (test 1) is a marker of *this* patch only on
+  vanilla php.net sources. Distribution / third-party builds (e.g. Remi) that
+  backported the 2023 multipart fix (CVE-2023-0662) already have this INI, so
+  it is PRESENT even without these patches.
+- Test 2 is also capped by `max_input_vars` (default 1000), so an unpatched
+  build usually passes it as well.
+
+Test 3 needs the `posix` extension (`php-process` on RHEL/CentOS) and a
+writable `sys_get_temp_dir()`; otherwise it reports INCONCLUSIVE. It creates a
+private temp dir with a FIFO, uses its own session id and save path, and
+removes both. Application sessions are not touched. It runs before the OOM
+test on purpose, because test 4 recycles the worker (and ends `php -S`).
+
+### CVE-2026-129496 (`check-129496.sh`)
+
+This one cannot be triggered over HTTP: the affected path is `error_log`
+writing while no request is active (startup / shutdown). The fix lives in
+`main/main.c`, which every SAPI of a build shares, so check it with the CLI
+binary from the same build or package, on the server:
+
+```sh
+./check-129496.sh /usr/bin/php
+```
+
+It starts PHP with a removed directive (`safe_mode=1`) and a non-UTC
+`date.timezone`. The startup error is stamped in **UTC** on a patched build
+and in **local time** on an unpatched one. PHP exits at startup and nothing
+else runs. Exit code: 0 PASS, 1 FAIL, 2 inconclusive.
 
 ## Usage
 

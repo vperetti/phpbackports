@@ -1,6 +1,8 @@
 <#
   run-cvecheck.ps1 — drive cvecheck.php and report PASS/FAIL for the
-  CVE-2026-109618 / 109619 mitigation. Behavioural validation, not an exploit.
+  CVE-2026-109618 / 109619 (round 1) and CVE-2026-126714 (round 2)
+  mitigations. Behavioural validation, not an exploit.
+  CVE-2026-129496 cannot be triggered over HTTP: see check-129496.sh.
 
   Usage:
     .\run-cvecheck.ps1 -Url <base-url-of-cvecheck.php> -Token <token> [-HostHeader <host>]
@@ -72,7 +74,7 @@ function Get-Field($text, $key) {
     return $null
 }
 
-Write-Host "== CVE-2026-109618 / 109619 mitigation check =="
+Write-Host "== CVE-2026-109618 / 109619 / 126714 mitigation check =="
 Write-Host "target: $Url"
 Write-Host ""
 
@@ -89,7 +91,7 @@ if (-not ($info -match "(?m)^ok$")) {
 $phpver = Get-Field $info "php"
 $marker = Get-Field $info "fix_marker"
 $uprog  = Get-Field $info "session.upload_progress.enabled"
-if ($marker -eq "PRESENT") { Pass "max_multipart_body_parts exists (fix compiled in)" }
+if ($marker -eq "PRESENT") { Pass "max_multipart_body_parts exists (weak signal: also present in distro builds with the CVE-2023-0662 backport)" }
 else { Fail "max_multipart_body_parts missing (build looks UNPATCHED)" }
 if ([string]::IsNullOrEmpty($uprog) -or $uprog -eq "0" -or $uprog -eq "Off") {
     Pass "session.upload_progress.enabled is off"
@@ -115,8 +117,19 @@ if ($pc -and ([int]$pc -lt 3000)) { Pass "parser capped parts at $pc (< 3000 sen
 else { Fail "parser accepted $pc parts (no cap observed)" }
 Write-Host ""
 
-# ---- Test 3: OOM ends the worker (no graceful fatal) ----------------------
-Write-Host "[3] OOM handling (request-local 32M limit)"
+# ---- Test 3: CVE-2026-126714 session file always truncated ---------------
+Write-Host "[3] CVE-2026-126714 session write (throw-away session on a FIFO)"
+$r5 = Invoke-Probe "$Url`?k=$Token&t=session126714"
+($r5.Body -split "`n") | Where-Object { $_ -ne "" } | ForEach-Object { Write-Host "     $_" }
+$sr = Get-Field $r5.Body "result"
+if ($sr -eq "PATCHED") { Pass "files handler truncates before writing (ftruncate failure detected)" }
+elseif ($sr -eq "UNPATCHED") { Fail "files handler skips the truncate (CVE-2026-126714 UNPATCHED)" }
+elseif ($sr -and $sr.StartsWith("INCONCLUSIVE")) { Note "inconclusive: $sr" }
+else { Fail "no result from the probe (endpoint error?)" }
+Write-Host ""
+
+# ---- Test 4: OOM ends the worker (no graceful fatal) ----------------------
+Write-Host "[4] OOM handling (request-local 32M limit)"
 $r3 = Invoke-Probe "$Url`?k=$Token&t=oom"
 $oom = $r3.Body
 Write-Host ("     http_code={0} err={1}" -f $r3.Status, $r3.Error)
@@ -128,12 +141,12 @@ if ($oom -match "Allowed memory size") {
 } elseif ($oom -match "before_oom") {
     Pass "worker died at the allocation with no graceful fatal (patched behaviour)"
 } else {
-    Note "inconclusive body; relies on Test 4 to confirm the worker recycled cleanly"
+    Note "inconclusive body; relies on Test 5 to confirm the worker recycled cleanly"
 }
 Write-Host ""
 
-# ---- Test 4: worker pool healthy after the OOM ----------------------------
-Write-Host "[4] server healthy after OOM (3 follow-up requests)"
+# ---- Test 5: worker pool healthy after the OOM ----------------------------
+Write-Host "[5] server healthy after OOM (3 follow-up requests)"
 $good = 0
 for ($n = 1; $n -le 3; $n++) {
     $r = Invoke-Probe "$Url`?k=$Token&t=info"

@@ -116,6 +116,8 @@ PHP-FPM) before use.
 exploit) to confirm a build is patched on the real SAPI after deployment: a
 token-gated endpoint (`cvecheck.php`) plus a driver that reports PASS/FAIL
 (`run-cvecheck.sh` for Linux/macOS, `run-cvecheck.ps1` for Windows PowerShell).
+It covers CVE-2026-109618/109619 and CVE-2026-126714 over HTTP;
+CVE-2026-129496 is checked locally with `verify/check-129496.sh`.
 See `verify/README.md`. Remove the endpoint after testing.
 
 ## Disclaimer

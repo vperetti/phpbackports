@@ -1,6 +1,7 @@
 <?php
 /*
- * cvecheck.php — temporary mitigation validator for CVE-2026-109618 / 109619.
+ * cvecheck.php — temporary mitigation validator for CVE-2026-109618 / 109619
+ * (round 1) and CVE-2026-126714 (round 2).
  *
  * This is NOT an exploit. It probes the observable *behaviour* that the patch
  * changes, so an operator can confirm a build is patched on the real SAPI
@@ -27,9 +28,10 @@ $t = isset($_GET['t']) ? $_GET['t'] : 'info';
 header('Content-Type: text/plain');
 
 if ($t === 'info') {
-    /* max_multipart_body_parts only exists in a patched build: on an
-       unpatched branch ini_get() returns "" (empty). That is the cleanest
-       static marker that the fix is compiled in. */
+    /* max_multipart_body_parts does not exist in vanilla php.net 5.4-7.3
+       sources, so there it marks this patch. Distribution builds (e.g. Remi)
+       that backported CVE-2023-0662 already have it: weak signal only, the
+       OOM probe (t=oom) is the real discriminator for round 1. */
     $mmbp = ini_get('max_multipart_body_parts');
     echo "php=" . PHP_VERSION . "\n";
     echo "max_multipart_body_parts=" . $mmbp . "\n";
@@ -38,6 +40,7 @@ if ($t === 'info') {
     echo "memory_limit=" . ini_get('memory_limit') . "\n";
     echo "pid=" . getmypid() . "\n";
     echo "fix_marker=" . (($mmbp === '' || $mmbp === false) ? "ABSENT" : "PRESENT") . "\n";
+    echo "posix_mkfifo=" . (function_exists('posix_mkfifo') ? "yes" : "no") . "\n";
     echo "ok\n";
 
 } elseif ($t === 'multipart') {
@@ -61,6 +64,46 @@ if ($t === 'info') {
     $a = array();
     while (true) { $a[] = str_repeat('x', 1048576); }
     echo "AFTER_OOM_SHOULD_NOT_PRINT\n";
+
+} elseif ($t === 'session126714') {
+    /* CVE-2026-126714: the patched "files" session handler ALWAYS truncates
+       the session file before writing and aborts the write if ftruncate()
+       fails. The probe points a throw-away session at a FIFO in a private
+       temp dir: ftruncate() on a FIFO fails, so only a patched build reports
+       "ftruncate() failed". An unpatched build skips the truncate and fails
+       later with "write failed". Touches no real session and no app data. */
+    if (!function_exists('posix_mkfifo')) {
+        echo "result=INCONCLUSIVE (posix extension not loaded)\nok\n"; exit;
+    }
+    if (function_exists('session_status') && session_status() === PHP_SESSION_ACTIVE) {
+        echo "result=INCONCLUSIVE (a session is already active, e.g. session.auto_start)\nok\n"; exit;
+    }
+    $msgs = array();
+    set_error_handler(function ($no, $str) use (&$msgs) { $msgs[] = $str; return true; });
+    $dir = rtrim(sys_get_temp_dir(), '/') . '/cvecheck_' . getmypid() . '_' . mt_rand();
+    $id  = 'cvechk' . mt_rand(100000, 999999);
+    $made = @mkdir($dir, 0700) && @posix_mkfifo("$dir/sess_$id", 0600);
+    if ($made) {
+        ini_set('session.save_handler', 'files');
+        ini_set('session.save_path', $dir);
+        ini_set('session.use_cookies', '0');
+        ini_set('session.use_strict_mode', '0');
+        session_id($id);
+        session_start();
+        $_SESSION['cvecheck'] = 'probe';
+        session_write_close();
+    }
+    restore_error_handler();
+    @unlink("$dir/sess_$id");
+    @rmdir($dir);
+    if (!$made) { echo "result=INCONCLUSIVE (cannot create FIFO in " . sys_get_temp_dir() . ")\nok\n"; exit; }
+    $trunc = 0;
+    foreach ($msgs as $m) {
+        echo "msg=" . str_replace(array("\r", "\n"), ' ', $m) . "\n";
+        if (stripos($m, 'ftruncate') !== false) $trunc = 1;
+    }
+    echo "result=" . ($trunc ? "PATCHED" : "UNPATCHED") . "\n";
+    echo "ok\n";
 
 } else {
     echo "unknown t\n";

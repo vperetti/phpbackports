@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 #
 # run-cvecheck.sh — drive cvecheck.php and report PASS/FAIL for the
-# CVE-2026-109618 / 109619 mitigation. Behavioural validation, not an exploit.
+# CVE-2026-109618 / 109619 (round 1) and CVE-2026-126714 (round 2)
+# mitigations. Behavioural validation, not an exploit.
+# CVE-2026-129496 cannot be triggered over HTTP: see check-129496.sh.
 #
 # Usage:
 #   ./run-cvecheck.sh <base-url-of-cvecheck.php> <token> [host-header]
@@ -34,7 +36,7 @@ ok()   { echo "  PASS - $1"; pass=$((pass+1)); }
 bad()  { echo "  FAIL - $1"; fail=$((fail+1)); }
 info() { echo "  info - $1"; }
 
-echo "== CVE-2026-109618 / 109619 mitigation check =="
+echo "== CVE-2026-109618 / 109619 / 126714 mitigation check =="
 echo "target: $URL"
 echo
 
@@ -50,7 +52,7 @@ echo "$INFO" | sed 's/^/     /'
 PHPVER=$(echo "$INFO"   | sed -n 's/^php=//p')
 MARKER=$(echo "$INFO"   | sed -n 's/^fix_marker=//p')
 UPROG=$(echo "$INFO"    | sed -n 's/^session.upload_progress.enabled=//p')
-[ "$MARKER" = "PRESENT" ] && ok "max_multipart_body_parts exists (fix compiled in)" \
+[ "$MARKER" = "PRESENT" ] && ok "max_multipart_body_parts exists (weak signal: also present in distro builds with the CVE-2023-0662 backport)" \
                           || bad "max_multipart_body_parts missing (build looks UNPATCHED)"
 # upload_progress off is the recommended hardening (the fix also disables it in code)
 if [ -z "$UPROG" ] || [ "$UPROG" = "0" ] || [ "$UPROG" = "Off" ]; then
@@ -81,8 +83,21 @@ else
 fi
 echo
 
-# ---- Test 3: OOM ends the worker (no graceful fatal) ----------------------
-echo "[3] OOM handling (request-local 32M limit)"
+# ---- Test 3: CVE-2026-126714 session file always truncated ---------------
+echo "[3] CVE-2026-126714 session write (throw-away session on a FIFO)"
+SO="$("${CURL[@]}" "$URL?k=$TOKEN&t=session126714" 2>/dev/null)"
+echo "$SO" | sed 's/^/     /'
+SR=$(echo "$SO" | sed -n 's/^result=//p')
+case "$SR" in
+  PATCHED)        ok "files handler truncates before writing (ftruncate failure detected)" ;;
+  UNPATCHED)      bad "files handler skips the truncate (CVE-2026-126714 UNPATCHED)" ;;
+  INCONCLUSIVE*)  info "inconclusive: ${SR#INCONCLUSIVE }" ;;
+  *)              bad "no result from the probe (endpoint error?)" ;;
+esac
+echo
+
+# ---- Test 4: OOM ends the worker (no graceful fatal) ----------------------
+echo "[4] OOM handling (request-local 32M limit)"
 OOUT=$(mktemp); OERR=$(mktemp)
 HTTP=$("${CURL[@]}" -o "$OOUT" -w '%{http_code}' "$URL?k=$TOKEN&t=oom" 2>"$OERR")
 RC=$?
@@ -96,13 +111,13 @@ elif echo "$OOMBODY" | grep -q 'AFTER_OOM_SHOULD_NOT_PRINT'; then
 elif echo "$OOMBODY" | grep -q 'before_oom'; then
   ok "worker died at the allocation with no graceful fatal (patched behaviour)"
 else
-  info "inconclusive body; relies on Test 4 to confirm the worker recycled cleanly"
+  info "inconclusive body; relies on Test 5 to confirm the worker recycled cleanly"
 fi
 rm -f "$OOUT" "$OERR"
 echo
 
-# ---- Test 4: worker pool healthy after the OOM ----------------------------
-echo "[4] server healthy after OOM (3 follow-up requests)"
+# ---- Test 5: worker pool healthy after the OOM ----------------------------
+echo "[5] server healthy after OOM (3 follow-up requests)"
 good=0
 for n in 1 2 3; do
   C=$("${CURL[@]}" -o /dev/null -w '%{http_code}' "$URL?k=$TOKEN&t=info" 2>/dev/null)
