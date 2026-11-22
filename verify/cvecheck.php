@@ -16,7 +16,7 @@
 
 $CVECHECK_TOKEN = 'CHANGE_ME';   // set a random value; pass it as ?k=<token>
 
-if (!isset($_GET['k']) || !hash_equals($CVECHECK_TOKEN, (string)$_GET['k'])) {
+if (!isset($_GET['k']) || !(function_exists('hash_equals') ? hash_equals($CVECHECK_TOKEN, (string)$_GET['k']) : $CVECHECK_TOKEN === (string)$_GET['k'])) {
     header('HTTP/1.1 403 Forbidden');
     header('Content-Type: text/plain');
     echo "forbidden\n";

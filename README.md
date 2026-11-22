@@ -1,10 +1,18 @@
-# PHP EOL backports — CVE-2026-109618 & CVE-2026-109619
+# phpbackports — security backports for end-of-life PHP
 
-Unofficial, **minimal** source backports of the two critical PHP core
-remote-code-execution fixes released on 2026-10-21, for **end-of-life PHP
-branches that the PHP project does not patch**.
+Unofficial, **minimal** source backports of critical PHP security fixes for
+**end-of-life PHP branches that the PHP project does not patch** (5.4 – 7.3).
 
-One patch per branch, each against the **last release of that branch**:
+| Round | PHP release | CVEs | Patch files |
+|---|---|---|---|
+| 1 | 2026-10-21 | CVE-2026-109618, CVE-2026-109619 | `patches/php-<branch>-CVE-2026-109618-109619.patch` |
+| 2 | 2026-11-19 | CVE-2026-126714, CVE-2026-129496 | `patches/php-<branch>-CVE-2026-126714-129496.patch` |
+
+Round 2 patches are **incremental**: apply round 1 first, then round 2.
+The scripts in `tools/` (`aplica54.py` for 5.x, `aplica73.py` for 7.x) apply
+both rounds to a clean source tree and are what the patches were generated from.
+
+Round 1 — one patch per branch, each against the **last release of that branch**:
 
 | Patch | Applies to |
 |---|---|
@@ -59,6 +67,20 @@ hardening in the generated VM (`zend_vm_execute.h`) from the full 8.2 patch,
 which would require regenerating the VM. That part is DoS hardening, not the
 confirmed RCE path.
 
+## Round 2 (2026-11-19): CVE-2026-126714 & CVE-2026-129496
+
+| CVE | Advisory | Upstream fix | Summary |
+|---|---|---|---|
+| CVE-2026-126714 | [GHSA-fm2m-fjf5-v3cp](https://github.com/php/php-src/security/advisories/GHSA-fm2m-fjf5-v3cp) | `e2d3cee9ad` | The `files` session handler only truncated the session file when the new data was *smaller*; an interrupted write of equal/larger data leaves old bytes behind, allowing injection of session variables. Fix: always `ftruncate()` before writing and fail the write if truncation fails. |
+| CVE-2026-129496 | [GHSA-gr4f-wgx5-jpfv](https://github.com/php/php-src/security/advisories/GHSA-gr4f-wgx5-jpfv) | `cb20015e04` | Use-after-free of the timezone cache when `error_log` is written outside an active request. Fix: use local time only while a request is active (`PG(modules_activated) && EG(active)`), UTC otherwise. |
+
+Other advisories of the 2026-11-19 release were triaged against 5.4–7.3:
+CVE-2026-115560 (upload-progress with mixed session serializers) is already
+closed by round 1 (upload progress disabled in code); the rest are 8.x-only or
+affect SAPIs/extensions outside this scope (FPM, CGI, SOAP).
+
+Tests for CVE-2026-126714 are in `verify/cve-126714/` (see its README).
+
 ## How to apply
 
 ```sh
@@ -66,6 +88,7 @@ confirmed RCE path.
 tar xjf php-7.3.33.tar.bz2
 cd php-7.3.33
 patch -p1 < /path/to/patches/php-7.3-CVE-2026-109618-109619.patch
+patch -p1 < /path/to/patches/php-7.3-CVE-2026-126714-129496.patch
 ./configure <your options>
 make && make install
 ```
