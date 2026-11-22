@@ -10,7 +10,10 @@ Unofficial, **minimal** source backports of critical PHP security fixes for
 
 Round 2 patches are **incremental**: apply round 1 first, then round 2.
 The scripts in `tools/` (`aplica54.py` for 5.x, `aplica73.py` for 7.x) apply
-both rounds to a clean source tree and are what the patches were generated from.
+both rounds to a clean source tree; the patches were generated from them. The
+round 1 patches also carry the extra fatal-error conversions from PR #1, which
+were made directly in the `.patch` files and are not in the scripts yet, so
+use the `.patch` files as the reference.
 
 Round 1 — one patch per branch, each against the **last release of that branch**:
 
