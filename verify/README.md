@@ -16,6 +16,7 @@ against systems you are authorised to test.
 | `run-cvecheck.ps1` | Same driver for Windows PowerShell (5.1+ or 7+). |
 | `check-126714.sh` | Local check for CVE-2026-126714 with the PHP CLI; same probe as test 3, without the posix extension. |
 | `check-129496.sh` | Local check for CVE-2026-129496, run on the server with the PHP CLI of the same build. |
+| `check-local.php` | Local checks of 109618 (OOM), 129496 and 126714 with any PHP CLI, **Windows included** (`php check-local.php [--src=<source tree>]`). 126714 is behavioural with `posix_mkfifo`, a source check otherwise. See `docs/WINDOWS-BUILD.md`. |
 | `cve-126714/` | Local reproduction tests for CVE-2026-126714 (interrupted session write). |
 
 ## What it checks
