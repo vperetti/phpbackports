@@ -1,0 +1,327 @@
+# Commits in remicollet/php-src-security PHP-5.6-security-backports-openssl11 above php-5.6.40 (committed after the php-5.6.40 tag, 2019-01-09)
+# head: f98c3c2b5ffca6bed55e6d514307facdcfc35f78
+# CVE/GHSA ids: CVE-2019-11043 CVE-2019-13224 CVE-2022-31629 GHSA-3cr5-j632-f35r GHSA-3mg3-cr28-46gc GHSA-3qgc-jrrr-25jv GHSA-453j-q27h-5p8x GHSA-4646-p932-gw34 GHSA-4w77-75f9-2c8w GHSA-5hqh-c84r-qjcv GHSA-5j3f-64r7-f564 GHSA-62xp-839h-2637 GHSA-658j-r8rw-q6mx GHSA-68fq-fh7h-f8gr GHSA-76gg-c692-v2mw GHSA-7qg2-v9fj-4mwv GHSA-85c2-q967-79q5 GHSA-94p6-54jq-9mwp GHSA-96wq-48vp-hh57 GHSA-9pqp-7h25-4f32 GHSA-c5f2-jwm7-mmq2 GHSA-ch8v-r6jh-4vvr GHSA-cj93-vc83-wgqv GHSA-f6gg-rchx-xw8j GHSA-fm2m-fjf5-v3cp GHSA-fpwc-w8rq-cr92 GHSA-g665-fm4p-vhff GHSA-gr4f-wgx5-jpfv GHSA-h35g-vwh6-m678 GHSA-h96m-rvf9-jgm2 GHSA-hgf5-96fm-v528 GHSA-hmxp-6pc4-f3vv GHSA-hrwm-9436-5mv3 GHSA-j3wh-g957-2m85 GHSA-jm4m-qfqx-967m GHSA-m33r-qmcv-p97q GHSA-p99j-rfp4-xqvq GHSA-q23r-hr55-xmpg GHSA-q6x7-frmf-grcw GHSA-qc49-hpvq-g2w6 GHSA-r977-prxv-hc43 GHSA-rgrp-mwpx-f6rm GHSA-vc5h-9ppw-p5f3 GHSA-vvx9-73fr-5jjx GHSA-w8qr-v226-r27w GHSA-wpj3-hf5j-x4v4 GHSA-www2-q4fc-65wf GHSA-xr7j-rvgx-xq5p 
+
+2026-11-20 Add NEWS entries from 8.2.36
+2026-11-20 fix GHSA-q23r tests for 5.6 (use SKIPIF, run-tests.php looks up EXTENSIONS modules in the compiled-in extension_dir)
+2026-11-20 add GHSA-qc49 tests for 5.6 (rewritten for the old FPM test helpers)
+2026-11-20 add GHSA-3mg3 test for 5.6 (rewritten for the old FPM test helpers)
+2026-11-20 add GHSA-gr4f test for 7.1 and older (no zend_test extension, check the time zone of the logged messages)
+2026-11-20 fix GHSA-5j3f test for 7.3 and older (proc_open() takes a string command, no scalar types, no ??)
+2026-11-20 fix GHSA-68fq test for 7.3 and older (no scalar and return types, sha256 support may be missing)
+2026-11-20 fix GHSA-q23r tests for 7.4 and older (no constructor promotion, str_contains(), flexible heredoc, scalar and return types)
+2026-11-20 fix new tests for 8.0 (use SKIPIF instead of --EXTENSIONS--, use the http ServerClientTestCase.inc)
+2026-11-20 Fix GHSA-jm4m-qfqx-967m: FPM worker stdio pipe fd closed twice
+2026-11-20 Fix GHSA-f6gg-rchx-xw8j: mixed case HTTPS and FTPS
+2026-11-20 Fix GHSA-658j-r8rw-q6mx: session.upload_progress.enabled is off by default
+2026-11-20 Fix GHSA-fm2m-fjf5-v3cp: RCE via corrupted session file
+2026-11-20 Fix GHSA-gr4f-wgx5-jpfv: DATEG(tzcache) use-after-free
+2026-11-20 Fix GHSA-4646-p932-gw34: keep SOAP DTD alive during cleanup
+2026-11-20 Fix GHSA-qc49-hpvq-g2w6: Drain unread request bodies
+2026-11-20 Fix GHSA-3mg3-cr28-46gc: FPM XSS within status endpoint via user and script
+2026-11-20 Fix GHSA-5j3f-64r7-f564: PATH_INFO underflow in CGI init_request_info()
+2026-11-20 Fix GHSA-68fq-fh7h-f8gr: refuse keyless phar signature when .pubkey exists
+2026-11-20 Fix GHSA-q23r-hr55-xmpg: out-of-bounds read on empty SOAP-ENC:arraySize
+2026-11-20 Reject mysqlnd OK messages past packet body
+2026-11-20 Harden mysqlnd temporal field decoding
+2026-11-20 fix cj93 test for 5.6 (Transfer-Encoding value is not trimmed, no IPv6 brackets in socket names)
+2026-11-20 fix fpwc test for 5.6 (307 redirects are followed with GET)
+2026-11-20 fix h35g auth message test for 5.6 (constructor is reported as mysqli::mysqli)
+2026-11-20 fix hgf5 tests for 5.6 (the request is written in several parts)
+2026-11-20 fix soap tests for 5.6 (ref_map now holds a reference, no 2GB strings)
+2026-11-20 fix GHSA-85c2-q967-79q5 for 5.6: do not free the returned value while ref_map still holds it
+2026-11-20 NEWS from 8.2.34
+2026-11-20 fix new tests for PHP 5.6 (no scalar/return types, no keyed list syntax)
+2026-11-20 fix getservbyname/ip2long tests expectations for path arguments
+2026-11-20 fix mysqli fake server tests for 5.6 (different client packets)
+2026-11-20 fix GHSA-h35g-vwh6-m678 binary row bound for 5.6 (chunk size includes the preallocated bytes, use the data size)
+2026-11-20 Fix GHSA-j3wh-g957-2m85: phar tar entry injection
+2026-11-20 Fix GHSA-62xp-839h-2637: FastCGI allowed_clients compared only 96 bits of IPv6 addresses
+2026-11-20 fix CertificateGenerator.inc for PHP 7.2 (no trailing comma in calls)
+2026-11-20 Fix GHSA-xr7j-rvgx-xq5p: OOB read in php_openssl_matches_wildcard_name()
+2026-11-20 Fix GHSA-vvx9-73fr-5jjx: do not fall back to CN if the cert has a service ID
+2026-11-20 Generate temporary config file when generating certificates
+2026-11-20 Add SubjectAltName support to certificate generator
+2026-11-20 Use sha256 as digest algorithm in certificate generator
+2026-11-20 add CertificateGenerator.inc for the openssl tests (from PHP-7.2)
+2026-11-20 Fix GHSA-ch8v-r6jh-4vvr: encode 0xFF in FILTER_SANITIZE_ENCODED
+2026-11-20 Fix heap-buffer-overflow in convert stream filters with NUL in line-break-chars
+2026-11-20 fix skipif section
+2026-11-20 ext/soap: make GHSA-cj93-vc83-wgqv test lean and reliable
+2026-11-20 Fix GHSA-cj93-vc83-wgqv
+2026-11-20 Fix GHSA-rgrp-mwpx-f6rm: unbounded recursion in ext/soap XML parsing and decoding
+2026-11-20 fix skipif section
+2026-11-20 Fix GHSA-fpwc-w8rq-cr92: strip credentials from user headers on cross-origin redirects
+2026-11-20 NEWS from 8.2.31
+2026-11-20 GHSA-85c2-q967-79q5: [soap] Fix stale SOAP_GLOBAL(ref_map) pointer with Apache Map
+2026-11-20 NEWS from 8.1.31
+2026-11-20 Fix GHSA-5hqh-c84r-qjcv: Integer overflow in the firebird quoter causing OOB writes
+2026-11-20 NEWS from 8.1.34
+2026-11-20 Add test for GHSA-h96m-rvf9-jgm2 (not affected)
+2026-11-20 Fix #71848: getimagesize with $imageinfo returns false
+2026-11-20 Fix GHSA-www2-q4fc-65wf
+2026-11-20 NEWS from 8.1.33
+2026-11-20 Fix GHSA-hrwm-9436-5mv3: pgsql escaping no error checks
+2026-11-20 Fix GHSA-453j-q27h-5p8x
+2026-11-20 Fix GHSA-3cr5-j632-f35r: Null byte in hostnames
+2026-11-20 NEWS from 8.1.32
+2026-11-20 fix the http ServerClientTestCase.inc for PHP 5.6 (no scalar/return types)
+2026-11-20 use the http ServerClientTestCase.inc in the new tests
+2026-11-20 add ServerClientTestCase.inc for the http tests (from PHP-7.4)
+2026-11-20 Fix GHSA-hgf5-96fm-v528: http user header check of crlf
+2026-11-20 Don't treat any WS as start of header
+2026-11-20 Reduce code duplication in HTTP header checks
+2026-11-20 Fixes #79265: Improper injection of Host header when using fopen for http requests
+2026-11-20 fix GHSA-h35g def test expectation for 5.6 (field defaults are kept for mysql_list_fields())
+2026-11-20 fix new mysqli tests for PHP 5.6 (no scalar/return types, no ??, no short list syntax)
+2026-11-20 adapt test + NEWS
+2026-11-20 Increase MySQLi fake server read timeout for ASAN job
+2026-11-20 Change port for mysqli fake server auth message test
+2026-11-20 Fix MySQLnd possible buffer over read in auth_protocol
+2026-11-20 Fix GHSA-h35g-vwh6-m678: Mysqlnd - various heap buffer over-reads
+2026-11-20 NEWS from 8.2.33
+2026-11-20 Fix GHSA-vc5h-9ppw-p5f3: phar circular symlink crash
+2026-11-20 Fix SQL injection in ext-pgsql via E'...' backslash breakout
+2026-11-20 Avoid state corruption via bailout
+2026-07-02 ext/openssl: openssl_encrypt() zend mm heap overflow on AES-WRAP-PAD mode.
+2026-05-19 fix test name
+2026-05-19 relax test (may fail when script not in status page)
+2026-05-19 GHSA-7qg2-v9fj-4mwv: [fpm] XSS within status endpoint
+2026-05-15 NEWS from 8.2.31
+2026-05-15 only test for GHSA-96wq-48vp-hh57
+2026-05-15 GHSA-hmxp-6pc4-f3vv: [soap] Fix broken Apache map value NULL check
+2026-05-15 GHSA-m33r-qmcv-p97q: [soap] Fix use-after-free after header parsing failure with SOAP_PERSISTENCE_SESSION
+2024-11-26 NEWS for 8.1.31 backports
+2024-11-26 Fix GHSA-4w77-75f9-2c8w
+2024-11-26 Fix #74267: segfault with streams and invalid data
+2024-11-26 Fix GHSA-r977-prxv-hc43
+2024-11-26 Fix GHSA-g665-fm4p-vhff: OOB access in ldap_escape
+2024-11-26 Fix GHSA-c5f2-jwm7-mmq2: stream HTTP fulluri CRLF injection
+2024-09-27 adapt GHSA-9pqp-7h25-4f32 test for 7.x
+2024-09-27 NEWS for 8.1.30 backports
+2024-09-27 Skip GHSA-9pqp-7h25-4f32 test on Windows
+2024-09-27 Fix GHSA-94p6-54jq-9mwp
+2024-09-27 Fix GHSA-p99j-rfp4-xqvq
+2024-09-27 Fix GHSA-9pqp-7h25-4f32
+2024-06-10 NEWS: Add backport from 8.1.29
+2024-06-10 Fix GHSA-3qgc-jrrr-25jv - VC11
+2024-06-10 Fix GHSA-3qgc-jrrr-25jv
+2024-06-05 NEWS
+2024-06-05 Fix GHSA-w8qr-v226-r27w
+2024-04-10 NEWS
+2024-04-10 Fix bug GHSA-q6x7-frmf-grcw: password_verify can erroneously return true
+2024-04-10 NEWS
+2024-04-10 Fix GHSA-wpj3-hf5j-x4v4: __Host-/__Secure- cookie bypass due to partial CVE-2022-31629 fix
+2023-08-06 Fix buffer mismanagement in phar_dir_read(): VC11 compatibility
+2023-08-06 Sanitize libxml2 globals before parsing: VC11 compatibility
+2023-08-02 fix backport
+2023-08-02 NEWS
+2023-08-02 Sanitize libxml2 globals before parsing
+2023-08-02 Fix buffer mismanagement in phar_dir_read()
+2023-06-15 add cve
+2023-06-07 Increase random bytes in HTTP Digest authentication for SOAP Minimal fix for GHSA-76gg-c692-v2mw
+2023-04-07 Fix VC11 compatibility
+2023-02-15 fix NEWS, not FPM specific
+2023-02-15 NEWS
+2023-02-15 Introduce max_multipart_body_parts INI
+2023-02-15 Fix repeated warning for file uploads limit exceeding
+2023-02-13 NEWS
+2023-02-13 Fix array overrun when appending slash to paths
+2023-02-13 crypt: Fix possible buffer overread in php_crypt()
+2023-02-13 crypt: Fix validation of malformed BCrypt hashes
+2022-12-20 NEWS
+2022-12-20 adapt test for 5.x
+2022-12-20 Fix #81740: PDO::quote() may return unquoted string
+2022-09-30 fix NEWS
+2022-09-28 Fix regression introduced by fixing bug 81726
+2022-09-28 Fix #81726: phar wrapper: DOS when using quine gzip file
+2022-09-28 Fix #81727: Don't mangle HTTP variable names that clash with ones that have a specific semantic meaning.
+2022-06-07 NEWS
+2022-06-07 Fix bug #81719: mysqlnd/pdo password buffer overflow
+2022-06-07 Fix #81720: Uninitialized array in pg_query_params() leading to RCE
+2021-11-15 fix ZTS
+2021-11-15 NEWS
+2021-11-15 fix new tests
+2021-11-15 Fix #79971: special character is breaking the path in xml function
+2021-10-21 NEWS
+2021-10-21 Fix #81420: ZipArchive::extractTo extracts outside of destination
+2021-10-20 update README
+2021-10-20 NEWS
+2021-10-20 Fix bug #81026 (PHP-FPM oob R/W in root process leading to priv escalation)
+2021-08-26 NEWS
+2021-08-26 Fix test
+2021-08-26 Fix #81211: Symlinks are followed when creating PHAR archive
+2021-06-28 adapt for 5.6 without ZEND_ULONG_MAX
+2021-06-28 fix ibase handle initialization, mostly compiler warnings
+2021-06-28 Fixes #65689. PDO_Firebrid / exec() does not free allocated statement.
+2021-06-28 Update NEWS
+2021-06-28 Fix #76448: Stack buffer overflow in firebird_info_cb
+2021-06-28 Fix #76449: SIGSEGV in firebird_handle_doer
+2021-06-28 Fix #76450: SIGSEGV in firebird_stmt_execute
+2021-06-28 Fix #76452: Crash while parsing blob data in firebird_fetch_blob
+2021-06-28 Fix bug #76488 Memory leak when fetching a BLOB field
+2021-06-28 Fix warning
+2021-06-28 Fix #81122: SSRF bypass in FILTER_VALIDATE_URL
+2021-06-28 Fixed bug #73512 Fails to find firebird headers
+2021-04-28 Add missing NEWS entry for #80710
+2021-04-28 Fix #80710: imap_mail_compose() header injection
+2021-02-03 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2021-02-03 Fix build
+2021-02-03 Fix bug #80672 - Null Dereference in SoapClient
+2021-02-03 Fix build
+2021-02-03 Fix bug #80672 - Null Dereference in SoapClient
+2021-02-03 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2021-01-29 Alternative fix for bug 77423
+2021-01-29 Alternative fix for bug 77423
+2021-01-04 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2021-01-04 Merge branch 'PHP-5.6-security-backports-openssl11' of github.com:microsoft/php-src into PHP-5.6-security-backports-openssl11
+2021-01-04 NEWS
+2021-01-04 Fix #77423: parse_url() will deliver a wrong host to user
+2021-01-04 NEWS
+2021-01-04 Do not decode cookie names anymore
+2020-09-29 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2020-09-29 NEWS
+2020-09-29 Do not decode cookie names anymore
+2020-08-04 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2020-08-04 ZTS fix
+2020-08-03 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2020-08-03 Fix #79877: getimagesize function silently truncates after a null byte
+2020-08-03 Fix #79797: Use of freed hash key in the phar_parse_zipfile function
+2020-05-13 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2020-05-13 Backports from 7.2.31
+2020-04-14 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2020-04-14 ZTS
+2020-04-14 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2020-04-14 NEWS
+2020-04-14 Fix bug #79465 - use unsigneds as indexes.
+2020-04-14 Fix bug #79330 - make all execution modes consistent in rejecting \0
+2020-03-17 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2020-03-17 [ci skip] Update NEWS
+2020-03-17 Fix bug #79329 - get_headers should not accept \0
+2020-03-17 fix test
+2020-03-17 Fix test
+2020-03-17 Fixed bug #79282
+2020-02-18 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2020-02-18 renew certs for openssl tests
+2020-02-18 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2020-02-18 NEWS
+2020-02-17 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2020-02-17 Fix bug #79082 - Files added to tar with Phar::buildFromIterator have all-access permissions
+2020-02-17 Fix bug #79221 - Null Pointer Dereference in PHP Session Upload Progress
+2020-01-28 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2020-01-28 Fix test cases
+2020-01-23 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2020-01-23 More checks for php_strip_tags_ex
+2020-01-22 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2020-01-22 Fix MSVC build
+2020-01-21 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2020-01-21 update NEWS
+2020-01-21 Fix bug #79037 (global buffer-overflow in `mbfl_filt_conv_big5_wchar`)
+2020-01-21 Fix #79099: OOB read in php_strip_tags_ex
+2019-12-31 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2019-12-31 fix remaining tests for Opcache runs
+2019-12-31 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2019-12-31 Fix test
+2019-12-31 Fix test when it's run on another drive
+2019-12-31 refix test
+2019-12-31 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2019-12-31 Clean up server-tests.php remains
+2019-12-31 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2019-12-31 Fix ext/mysql tests
+2019-12-31 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2019-12-31 Sync test with changes in libcurl 7.64.0
+2019-12-31 Sync test for libcurl 7.64.0
+2019-12-31 Extend test, latest cURL ships also with smb and smbs
+2019-12-31 fix test
+2019-12-31 Fix tests
+2019-12-31 fork tests
+2019-12-25 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2019-12-25 Link to Code of Conduct
+2019-12-17 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2019-12-17 Fix tests
+2019-12-17 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2019-12-17 Fixed bug #78910
+2019-12-17 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2019-12-17 Fix bug #78793
+2019-12-17 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2019-12-17 Fix #78863: DirectoryIterator class silently truncates after a null byte
+2019-12-17 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2019-12-17 Fix #78862: link() silently truncates after a null byte on Windows
+2019-12-17 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2019-12-17 Fix #78878: Buffer underflow in bc_shift_addsub
+2019-10-22 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2019-10-22 add NEWS entry
+2019-10-22 Fix bug #78599 (env_path_info underflow can lead to RCE) (CVE-2019-11043)
+2019-08-30 Remove the forked test and adjust the original one
+2019-08-30 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2019-08-30 Prevent test case failure
+2019-08-30 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2019-08-30 Fixed test on 32-bit systems
+2019-08-30 test fixes
+2019-08-30 Fix getColumnMeta() test
+2019-08-30 Fix erroneous test expectation
+2019-08-28 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2019-08-28 relax test, offset may be different on various system lib versions
+2019-08-28 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2019-08-28 NEWS
+2019-08-28 Fix CVE-2019-13224: don't allow different encodings for onig_new_deluxe()
+2019-08-28 Fix #75457: heap-use-after-free in php7.0.25
+2019-07-30 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2019-07-30 Fix #77919: Potential UAF in Phar RSHUTDOWN
+2019-07-30 Fix bug #78256 (heap-buffer-overflow on exif_process_user_comment)
+2019-07-30 Fix bug #78222 (heap-buffer-overflow on exif_scan_thumbnail)
+2019-07-16 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2019-07-16 xfail phar tests
+2019-07-16 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2019-07-11 Add support for "xfail" to phpt SKIPIF sections
+2019-07-09 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2019-07-09 Upgrade to SQLite 3.28.0
+2019-07-09 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2019-07-04 fix tests
+2019-05-28 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2019-05-28 Fix bug #77967 - Bypassing open_basedir restrictions via file uris
+2019-05-28 Fix bug #77988 - heap-buffer-overflow on php_jpg_get16
+2019-05-28 fix test output
+2019-05-28 Fix bug #78069 - Out-of-bounds read in iconv.c:_php_iconv_mime_decode() due to integer overflow
+2019-05-28 Fix #77973: Uninitialized read in gdImageCreateFromXbm
+2019-04-30 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2019-04-30 Fix potential "expanded command line too long" build errors
+2019-04-30 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2019-04-30 Fix bug #77950 - Heap-buffer-overflow in _estrndup via exif_process_IFD_TAG
+2019-04-12 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2019-04-12 Fix tests wrt. internationalization
+2019-04-12 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2019-04-12 Skip test on PostgreSQL 10
+2019-04-09 move various places to the centralized OpenSSL setup routine
+2019-04-05 Make openssl_error_string test work in OpenSSL 1.1.1
+2019-04-05 implement basic config support for OpenSSL 1.1.x
+2019-04-05 use the new API for opaque symbol in OpenSSL 1.1.x
+2019-04-04 Fix typos
+2019-04-02 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2019-04-02 Pointer arithmetic on void pointers is illegal
+2019-04-02 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2019-04-02 Fixed bug #77831 - Heap-buffer-overflow in exif_iif_add_value in EXIF
+2019-04-02 Fix bug #77753 - Heap-buffer-overflow in php_ifd_get32s
+2019-04-02 SQLite3: add DEFENSIVE config for SQLite >= 3.26.0 as a mitigation strategy against potential security flaws
+2019-04-02 switch back to 5.6.40
+2019-03-26 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2019-03-26 Remove -dev suffix from configure.in
+2019-03-07 rewrite README.md to explain why this repostiory
+2019-03-07 rewrite README.md to explain why this repostiory
+2019-03-07 Update NEWS
+2019-03-07 Update NEWS
+2019-03-06 Merge branch 'PHP-5.6-security-backports' into PHP-5.6-security-backports-openssl11
+2019-03-06 Fix test portability
+2019-03-06 Fix bug #77630 - safer rename() procedure
+2019-03-06 Fix test
+2019-03-06 Fix bug #77586 - phar_tar_writeheaders_int() buffer overflow
+2019-03-06 Fix test error message
+2019-03-06 Fix bug #77563 - Uninitialized read in exif_process_IFD_in_MAKERNOTE
+2019-03-06 Fix bug #77540 - Invalid Read on exif_process_SOFn
+2019-03-06 Fix integer overflows on 32-bits
+2019-03-06 Fix test
+2019-03-06 Fix #77431 SplFileInfo::__construct() accepts NUL bytes
+2019-03-06 Fix bug #77396 - Null Pointer Dereference in phar_create_or_parse_filename
+2019-02-21 Backport SETUP_OPENSSL() and the ext/curl config
+2019-02-21 Remove -dev, this is the end station
+2019-01-21 backport needed changes for OpenSSL 1.1

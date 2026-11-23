@@ -37,10 +37,20 @@ git init -q .
 echo '* -ident -text -eol' > .git/info/attributes   # keep $Id$ and line endings as shipped
 git add -A -f . && git -c user.name=export -c user.email=export@localhost commit -q -m tarball
 git apply -p1 --whitespace=nowarn "$W/remi.diff"
-(cd ext/date/lib && "$RE2C" --no-generation-date -d -b parse_date.re > parse_date.c \
-                 && "$RE2C" --no-generation-date -d -b parse_iso_intervals.re > parse_iso_intervals.c)
-"$RE2C" --no-generation-date -b -o ext/standard/url_scanner_ex.c ext/standard/url_scanner_ex.re
-"$RE2C" --no-generation-date -o ext/pdo/pdo_sql_parser.c ext/pdo/pdo_sql_parser.re 2>/dev/null
+# only the scanners whose .re source Remi's branch changes (5.6 changes none)
+mudou() { grep -q "^diff --git a/$1 " "$W/remi.diff"; }
+if mudou ext/date/lib/parse_date.re; then
+  (cd ext/date/lib && "$RE2C" --no-generation-date -d -b parse_date.re > parse_date.c); fi
+if mudou ext/date/lib/parse_iso_intervals.re; then
+  (cd ext/date/lib && "$RE2C" --no-generation-date -d -b parse_iso_intervals.re > parse_iso_intervals.c); fi
+if mudou ext/standard/url_scanner_ex.re; then
+  "$RE2C" --no-generation-date -b -o ext/standard/url_scanner_ex.c ext/standard/url_scanner_ex.re; fi
+if mudou ext/pdo/pdo_sql_parser.re; then
+  "$RE2C" --no-generation-date -o ext/pdo/pdo_sql_parser.c ext/pdo/pdo_sql_parser.re 2>/dev/null; fi
+for f in $(grep -oE '^diff --git a/[^ ]+\.(re|l|y) ' "$W/remi.diff" | cut -d' ' -f3 | sed 's#^a/##'); do
+  case "$f" in ext/date/lib/parse_date.re|ext/date/lib/parse_iso_intervals.re|ext/standard/url_scanner_ex.re|ext/pdo/pdo_sql_parser.re) ;;
+  *) echo "generated-source input changed and not handled: $f" >&2; exit 1;; esac
+done
 
 # 3. One patch, tarball -> patched tree (binary test fixtures included)
 git add -A -f .

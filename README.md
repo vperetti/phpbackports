@@ -134,9 +134,9 @@ affect SAPIs/extensions outside this scope (FPM, CGI, SOAP).
 
 Tests for CVE-2026-126714 are in `verify/cve-126714/` (see its README).
 
-## PHP 7.2 / 7.3 / 7.4: Remi Collet's security backports
+## PHP 5.6 / 7.0 – 7.4: Remi Collet's security backports
 
-For the 7.x branches there is a more complete source than our own patches:
+For PHP 5.6 and the 7.x branches there is a more complete source than our own patches:
 [remicollet/php-src-security](https://github.com/remicollet/php-src-security),
 maintained by Remi Collet (php-src contributor, PHP 7.2 release manager). Those
 branches carry **every** security fix backported since each branch's last
@@ -147,12 +147,22 @@ php.net tarball:
 
 | Patch | Applies to | Remi branch head | Commits |
 |---|---|---|---|
+| `patches/remi/php-5.6-remi-security-backports.patch` | PHP 5.6.40 | `f98c3c2b5ffc` (`PHP-5.6-security-backports-openssl11`) | `php-5.6-remi-commits.txt` |
+| `patches/remi/php-7.0-remi-security-backports.patch` | PHP 7.0.33 | `445f1a2f443e` | `php-7.0-remi-commits.txt` |
+| `patches/remi/php-7.1-remi-security-backports.patch` | PHP 7.1.33 | `2b199b7e3abb` | `php-7.1-remi-commits.txt` |
 | `patches/remi/php-7.2-remi-security-backports.patch` | PHP 7.2.34 | `e845325cd92c` | `php-7.2-remi-commits.txt` |
 | `patches/remi/php-7.3-remi-security-backports.patch` | PHP 7.3.33 | `399a749a5cb0` | `php-7.3-remi-commits.txt` |
 | `patches/remi/php-7.4-remi-security-backports.patch` | PHP 7.4.33 | `9a0a020ff740` | `php-7.4-remi-commits.txt` |
 
-**Use either this patch or our `patches/php-7.x-CVE-*` patches, not both.**
-On 7.2 / 7.3 / 7.4 the Remi patch is the recommended one.
+**Use either this patch or our `patches/php-*-CVE-*` patches, not both.**
+On 5.6 and 7.x the Remi patch is the recommended one; our own patches remain
+the only option for 5.4 / 5.5, which Remi does not maintain.
+
+For 5.6 the export uses Remi's `PHP-5.6-security-backports-openssl11` branch:
+it is the maintained one (the plain `PHP-5.6-security-backports` branch stopped
+in July 2026 and lacks the 2026 CVEs) and adds OpenSSL 1.1 support, while
+still building against OpenSSL 1.0. The 5.6 and 7.0 patches are large mostly
+because they update the bundled SQLite (`ext/sqlite3/libsqlite`).
 
 ```sh
 tar xjf php-7.3.33.tar.bz2 && cd php-7.3.33
@@ -169,15 +179,18 @@ How the patches are built (`tools/remi-export.sh`, reproducible):
 2. applied to the php.net tarball;
 3. the re2c outputs that ship in the tarball (`ext/date/lib/parse_date.c`,
    `parse_iso_intervals.c`, `ext/standard/url_scanner_ex.c`,
-   `ext/pdo/pdo_sql_parser.c`) are **regenerated** (re2c 2.2), because Remi
-   changed their `.re` sources and the git tree does not carry the generated
-   files. The build therefore does not need re2c, on Linux or Windows.
+   `ext/pdo/pdo_sql_parser.c`) are **regenerated** (re2c 2.2) when Remi's
+   branch changes their `.re` source (7.x; 5.6 changes none), because the git
+   tree does not carry the generated files. The script stops if any other
+   generated-source input (`.re`, `.l`, `.y`) changes. The build therefore
+   does not need re2c, on Linux or Windows.
 
-Notes for Windows (VC15):
+Notes for Windows (VC15 for 7.2–7.4; VC14 for 7.0/7.1, VC11 for 5.6):
 
 - No new source files are added, so no `config.w32` needs new entries. The only
   `config.w32` change (7.4, `ext/zip`) is guarded by `VCVERS >= 1920` (VS16)
-  and does nothing on VC15.
+  and does nothing on VC15. The 5.6 patch changes `config.w32` of openssl,
+  curl, ldap and snmp to find either OpenSSL 1.0 or 1.1 libraries.
 - Remi's branches include the Windows-specific fixes from upstream
   (`win32/ioutil.c`, `win32/sendmail.c`), but Remi builds and tests on Linux
   (RPM). Build on VC15 and run `verify/` plus your application tests before
