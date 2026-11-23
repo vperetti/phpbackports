@@ -29,6 +29,21 @@ Round 1 — one patch per branch, each against the **last release of that branch
 (PHP 7.4 / 8.0 / 8.1 already have official minimal backports from the PHP
 security team; 8.2+ have full releases.)
 
+> **Round 1 revision (2026-11-22, 7.0–7.3 only).** The 7.x round-1 patches
+> were updated after a line-by-line comparison with the official 7.4 fix
+> (`712e60f9ed`) and Remi Collet's backports:
+> - `PG(modules_activated) = 0` at the end of `php_request_shutdown()` was
+>   missing on 7.x (the 5.x patches already had it);
+> - `substring_conf()` in `rfc1867.c` takes a `size_t` length, as upstream;
+> - 7.2/7.3: the handler / exception / object-store resets in
+>   `shutdown_executor()` now sit where the official fix puts them, before
+>   `EG(active) = 0` and the extension deactivators, instead of at the end of
+>   the function. 7.0/7.1 keep them at the end, already before `EG(active) = 0`.
+>
+> If you already built with the earlier 7.x patches (round 1 + round 2), apply
+> only `patches/delta/php-7.x-CVE-2026-109619-rev2.patch` on top and rebuild.
+> 5.x patches are unchanged.
+
 > **Not official PHP releases.** The PHP project ships fixes for 8.2+, plus
 > minimal source backports for 7.4 / 8.0 / 8.1. These patches extend that
 > same minimal approach to 5.4–7.3 for people building those branches from
@@ -65,7 +80,7 @@ Mirroring the official minimal 7.4 backport (`php-src` commit `712e60f9ed`):
    are cleared at request shutdown so a later request cannot consume stale
    values (CVE-2026-109619). On 5.x the object store is already cleared by the
    existing `zend_objects_store_destroy()`; the 7.x patches reset it
-   explicitly.
+   explicitly (on 7.2/7.3 at the same points as the official 7.4 fix).
 3. **Disable session upload-progress in code** — closes the confirmed
    producer/consumer path of CVE-2026-109619.
 4. **Harden multipart parsing** — keep only the headers actually used (ignoring

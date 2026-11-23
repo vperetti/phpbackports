@@ -154,16 +154,47 @@ for campo in ('auth_user', 'auth_password', 'auth_digest', 'content_type_dup', '
 	}
 ''' % (campo, campo, campo))
 
-# shutdown_executor: resetar estado global antes de init_executor (uniforme p/ 7.0-7.3)
-# Inserido apos a ultima "EG(ht_iterators_used) = 0;", no fim de shutdown_executor.
-insere_apos_ultima('Zend/zend_execute_API.c', '\tEG(ht_iterators_used) = 0;\n', '''
-	/* Backport CVE-2026-109619: estado que pode ser acessado antes de init_executor */
-	ZVAL_UNDEF(&EG(user_error_handler));
+# shutdown_executor: resetar estado global que zend_error pode usar antes de init_executor.
+# 7.2/7.3 (tem fast_shutdown em shutdown_executor): mesma posicao do commit oficial 712e60f9ed
+#   - handlers so no ramo fast_shutdown (no outro ramo eles sao destruidos e zerados)
+#   - error_handling/exception antes de EG(active) = 0 e dos zend_extension_deactivator
+#   - objects_store no fim do ramo fast_shutdown
+# 7.0/7.1: tudo no fim de shutdown_executor (apos a ultima destruicao, antes de EG(active) = 0)
+def _ler(path):
+    return open(os.path.join(root, path), encoding='latin-1').read()
+RESET_HANDLERS = '''	ZVAL_UNDEF(&EG(user_error_handler));
 	ZVAL_UNDEF(&EG(user_exception_handler));
 	memset(&EG(user_error_handlers_error_reporting), 0, sizeof(EG(user_error_handlers_error_reporting)));
 	memset(&EG(user_error_handlers), 0, sizeof(EG(user_error_handlers)));
 	memset(&EG(user_exception_handlers), 0, sizeof(EG(user_exception_handlers)));
-	EG(objects_store).object_buckets = NULL;
+'''
+if ATIVO and 'zend_bool fast_shutdown = is_zend_mm()' in _ler('Zend/zend_execute_API.c'):
+    sub('Zend/zend_execute_API.c', '''	zend_objects_store_free_object_storage(&EG(objects_store), fast_shutdown);
+
+	/* All resources and objects are destroyed. */
+''', '''	if (fast_shutdown) {
+		/* Backport CVE-2026-109619: pode ser usado por zend_error antes de init_executor */
+''' + RESET_HANDLERS.replace('\t', '\t\t') + '''	}
+
+	zend_objects_store_free_object_storage(&EG(objects_store), fast_shutdown);
+
+	/* Backport CVE-2026-109619: pode ser usado por zend_error antes de init_executor */
+	EG(error_handling) = EH_NORMAL;
+	EG(exception) = NULL;
+
+	/* All resources and objects are destroyed. */
+''')
+    sub('Zend/zend_execute_API.c', '''		zend_cleanup_internal_classes();
+	} else {
+''', '''		zend_cleanup_internal_classes();
+		EG(objects_store).object_buckets = NULL;
+		EG(objects_store).top = 1;
+	} else {
+''')
+else:
+    insere_apos_ultima('Zend/zend_execute_API.c', '\tEG(ht_iterators_used) = 0;\n', '''
+	/* Backport CVE-2026-109619: estado que pode ser acessado antes de init_executor */
+''' + RESET_HANDLERS + '''	EG(objects_store).object_buckets = NULL;
 	EG(objects_store).top = 1;
 	EG(error_handling) = EH_NORMAL;
 	EG(exception) = NULL;
@@ -175,6 +206,18 @@ sub('main/main.c', '''			zval_ptr_dtor(&PG(http_globals)[i]);
 			/* Backport CVE-2026-109619: pode ser acessado antes de php_request_startup() */
 			ZVAL_UNDEF(&PG(http_globals)[i]);
 ''', -1)
+# fim de php_request_shutdown: modules_activated pode ser lido antes de php_request_startup()
+# (php_log_err, php_error_cb). Faltava aqui; nos 5.x o aplica54 ja fazia.
+sub('main/main.c', '''#endif /* HAVE_DTRACE */
+}
+/* }}} */
+''', '''#endif /* HAVE_DTRACE */
+
+	/* Backport CVE-2026-109619: pode ser acessado antes de php_request_startup() */
+	PG(modules_activated) = 0;
+}
+/* }}} */
+''')
 insere_apos_regex('main/main.c', r'\n\tPHP_INI_ENTRY\("max_file_uploads",[^\n]*\n', '\tPHP_INI_ENTRY("max_multipart_body_parts",\t"-1",\t\tPHP_INI_SYSTEM|PHP_INI_PERDIR,\t\tNULL)\n')
 
 # zend_llist: zerar head/tail
@@ -208,6 +251,22 @@ sub('main/rfc1867.c', '''			*value = '\\0';
 				smart_string_appends(&buf_value, value);
 			}
 ''')
+# rfc1867: substring_conf com size_t (como upstream/Remi), sem truncar o tamanho em int
+sub('main/rfc1867.c', '''static char *substring_conf(char *start, int len, char quote)
+{
+	char *result = emalloc(len + 1);
+	char *resp = result;
+	int i;
+''', '''static char *substring_conf(char *start, size_t len, char quote)
+{
+	char *result = emalloc(len + 1);
+	char *resp = result;
+	size_t i;
+''')
+sub('main/rfc1867.c', 'return substring_conf(str, (int)strlen(str), quote);',
+    'return substring_conf(str, strlen(str), quote);')
+sub('main/rfc1867.c', 'return substring_conf(str, strend - str, 0);',
+    'return substring_conf(str, (size_t)(strend - str), 0);')
 # declarar php_mime_get_hdr_value antes de multipart_buffer_headers
 sub('main/rfc1867.c', '''/* parse headers */
 static int multipart_buffer_headers(''', '''static char *php_mime_get_hdr_value(zend_llist header, char *key);
