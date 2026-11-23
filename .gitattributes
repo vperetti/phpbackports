@@ -1,0 +1,3 @@
+# patches must keep LF line endings on Windows checkouts (core.autocrlf), or git apply fails
+*.patch -text
+*.sh text eol=lf
